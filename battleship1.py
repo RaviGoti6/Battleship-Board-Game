@@ -2,7 +2,9 @@
 import pygame
 import random
 pygame.init()
+pygame.font.init()
 pygame.display.set_caption("Battleship")
+myfont = pygame.font.SysFont("fresansttf", 100)
 
 #engine
 def ship(size):
@@ -70,31 +72,52 @@ def place_ships(sizes):
 def game():
     game.player1 = player()
     game.player2 = player()
-    player1_turn = True
+    game.player1_turn = True
     game.over = False
-    return game.player1, game.player2
+    game.result = None
+    return game.player1, game.player2, game.player1_turn, game.result
 
 def make_move(i):
-    player = game.player1 if game.player_turn else game.player2
-    opponent = game.player2 if game.player_turn else player1
-
+    player = game.player1 if game.player1_turn else game.player2
+    opponent = game.player2 if game.player1_turn else game.player1
+    hit = False
+    #print(opponent)
+    #list1 = [opponent[3] for i in opponent[0]]
+    #print(list1)
     # set miss 'M' or hit 'H'
-    if i in opponent[3]:
-        player.search[i] = "H"
+    for ship in opponent[0]:
+        print(ship)
+        if i in ship[3]:
+            print(ship[3])
+            player[1][i] = "H"
+            hit = True
 
-        # check if ship is sunk "S"
-        for ship in opponent.player.ships:
-            sunk = True
-            for i in ship[3]:
-                if player.search[i] == "U":
-                    sunk = False
-                    break
-            if sunk:
+            # check if ship is sunk "S"
+            for ship in opponent[0]:
+                sunk = True
                 for i in ship[3]:
-                    player.search[i] = "S"
+                    if player[1][i] == "U":
+                        sunk = False
+                        break
+                if sunk:
+                    for i in ship[3]:
+                        player[1][i] = "S"
 
-    else:
-        player.search[i] = "M"
+        else:
+            player[1][i] = "M"
+    
+    # check for game over
+    game_over = True
+    for ship in opponent[0]:
+        for i in ship[3]:
+            if player[1][i] == "U":
+                game_over =False
+    game.over = game_over
+    game.result = 1 if game.player1_turn else 2
+
+    # change the active team
+    if not hit:
+        game.player1_turn = not game.player1_turn
 
 
 # global variables
@@ -117,7 +140,7 @@ COLORS = {"U": GREY, "M": BLUE, "H": ORANGE, "S": RED}
 
 #function to draw a grid
 def draw_grid(player, search = False, left = 0, top = 0):
-    print(player)
+    #print(player)
     for i in range(100):
         x = left + i % 10 * SQ_SIZE
         y = top + i // 10 * SQ_SIZE
@@ -130,7 +153,7 @@ def draw_grid(player, search = False, left = 0, top = 0):
 
 # function draw ships onto grids
 def draw_ships(player, left = 0, top = 0):
-    print(player[0])
+    #print(player[0])
     for ship in player[0]: #ships
         x = left + ship[1] * SQ_SIZE + INDENT #col
         y = top + ship[0] * SQ_SIZE + INDENT #row
@@ -143,8 +166,10 @@ def draw_ships(player, left = 0, top = 0):
         rectangle = pygame.Rect(x, y, width, height)
         pygame.draw.rect(SCREEN, GREEN, rectangle, border_radius= 15)
 
-player1 = player()
-player2 = player()
+#player1 = player()
+#player2 = player()
+games = game()
+
 
 #player()
 #print(player.indexes)
@@ -167,6 +192,20 @@ while animating:
         if event.type == pygame.QUIT:
             animating = False
 
+        # user click on mouse
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x,y = pygame.mouse.get_pos()
+            if game.player1_turn and x < SQ_SIZE*10 and y < 10*SQ_SIZE:
+                row = y // SQ_SIZE
+                col = x // SQ_SIZE
+                index = row * 10 + col
+                make_move(index)
+            elif not game.player1_turn and x > WIDTH - SQ_SIZE*10 and y > SQ_SIZE*10 + V_MARGIN:
+                row = (y -SQ_SIZE*10 - V_MARGIN) // SQ_SIZE
+                col = (x - SQ_SIZE*10 - H_MARGIN) // SQ_SIZE
+                index = row * 10 + col
+                make_move(index)
+
         #user presses key on keyboard
         if event.type == pygame.KEYDOWN:
 
@@ -185,18 +224,22 @@ while animating:
         SCREEN.fill(GREY)
 
         # draw search grids
-        draw_grid(player1, search = True)
-        draw_grid(player2, search = True, left = (WIDTH - H_MARGIN)//2 + H_MARGIN, top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
+        draw_grid(games[0], search = True)
+        draw_grid(games[1], search = True, left = (WIDTH - H_MARGIN)//2 + H_MARGIN, top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
 
         # draw position grids
-        draw_grid(player1, top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
-        draw_grid(player2, left = (WIDTH - H_MARGIN)//2 + H_MARGIN)
+        draw_grid(games[0], top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
+        draw_grid(games[1], left = (WIDTH - H_MARGIN)//2 + H_MARGIN)
 
         #draw ships onto grid
-        draw_ships(player1, top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
-        draw_ships(player2, left = (WIDTH - H_MARGIN)//2 + H_MARGIN)
+        draw_ships(games[0], top = (HEIGHT - V_MARGIN)//2 + V_MARGIN)
+        draw_ships(games[1], left = (WIDTH - H_MARGIN)//2 + H_MARGIN)
+
+        #game over message
+        if game.over:
+            text = "Player " + str(game.result) + " wins!"
+            textbox = myfont.render(text, False, GREY, WHITE)
+            SCREEN.blit(textbox, (WIDTH//2 - 240, HEIGHT//2 - 50))
 
         #update screen
         pygame.display.flip()
-
- 
